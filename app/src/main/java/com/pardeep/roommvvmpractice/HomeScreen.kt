@@ -96,17 +96,20 @@ fun HomeUi(modifier: Modifier = Modifier) {
                     value = searchQuery,
                     onValueChange = {
                         homeScreenViewModel.onQueryDataChange(
-                            it,
+                            query = it,
                             genderLabel = options[selectedIndex]
                         )
                     },
                     label = {
                         Text(text = "Search")
                     },
+                    modifier = Modifier
+                        .fillMaxWidth(),
                     keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words
-                    ), modifier = Modifier.fillMaxWidth()
+                        capitalization = KeyboardCapitalization.Words,
+                    )
                 )
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.Absolute.Center

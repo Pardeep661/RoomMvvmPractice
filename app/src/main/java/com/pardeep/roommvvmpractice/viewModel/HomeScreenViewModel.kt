@@ -24,8 +24,11 @@ class HomeScreenViewModel(
     private var _userGender = MutableStateFlow("Male")
     val userGender: StateFlow<String> = _userGender
 
-    private var _searchquery = MutableStateFlow("")
-    val searchData: StateFlow<String> = _searchquery
+    private var _searchQuery = MutableStateFlow("")
+    val searchData: StateFlow<String> = _searchQuery
+
+    private var _tabLabel = MutableStateFlow("All")
+    val tabLabel: StateFlow<String> = _tabLabel
 
 
     private var _getUserData = MutableStateFlow<List<UserDataModel>>(emptyList())
@@ -33,13 +36,13 @@ class HomeScreenViewModel(
 
 
     fun onQueryDataChange(query: String, genderLabel: String) {
-        _searchquery.value = query
-        _userGender.value = genderLabel
+        _searchQuery.value = query
+        _tabLabel.value = genderLabel
     }
 
     private fun observeQuery() {
         viewModelScope.launch {
-            combine(_searchquery.debounce(300), _userGender) { query, gender ->
+            combine(_searchQuery.debounce(300), _tabLabel) { query, gender ->
                 Pair(query, gender)
             }.collect { (query, gender) ->
                 Log.d(
@@ -75,7 +78,7 @@ class HomeScreenViewModel(
     fun insertUserData(
         name: String,
         gender: String,
-        email: String
+        email: String,
     ) {
         viewModelScope.launch {
             val user = UserDataModel(
@@ -84,8 +87,7 @@ class HomeScreenViewModel(
                 email = email
             )
             userRepositoryImp.insertUserData(user)
-            onQueryDataChange("", "All")
-            _userGender.value = "Male"
+            refreshUserData()
             _userName.value = ""
             _userEmail.value = ""
         }
@@ -97,7 +99,7 @@ class HomeScreenViewModel(
         index: Int,
         name: String,
         gender: String,
-        email: String
+        email: String,
     ) {
         val user = UserDataModel(
             userName = name,
@@ -106,7 +108,7 @@ class HomeScreenViewModel(
         )
         viewModelScope.launch {
             userRepositoryImp.updateUserData(index, user)
-            onQueryDataChange("", "All")
+            refreshUserData()
         }
 
 
@@ -120,5 +122,14 @@ class HomeScreenViewModel(
 
     }
 
+    private suspend fun refreshUserData() {
+        val currentQuery = _searchQuery.value
+        val currentTab = _tabLabel.value
+
+        _getUserData.value = when {
+            currentQuery.isBlank() && currentTab == "All" -> userRepositoryImp.getUserData()
+            else -> userRepositoryImp.getFilterData(currentQuery, currentTab)
+        }
+    }
 
 }
