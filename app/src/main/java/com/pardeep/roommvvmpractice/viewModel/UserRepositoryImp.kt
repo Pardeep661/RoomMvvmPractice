@@ -38,6 +38,8 @@ class UserRepositoryImp(
     }
 
     override suspend fun getFilterData(query: String,gender : String): List<UserDataModel> {
+        Log.d("UserRepoImpl", "getFilterData: data that return :${appDataBase.roomDao().searchUser(query,gender)}")
         return appDataBase.roomDao().searchUser(query,gender)
     }
+
 }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -21,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -28,6 +30,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -39,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -62,6 +66,7 @@ fun HomeUi(modifier: Modifier = Modifier) {
     val homeScreenViewModel: HomeScreenViewModel = viewModel(factory = homeScreenViewModelFactory)
     val userData by homeScreenViewModel.getUserData.collectAsState()
     var selectedData by remember { mutableStateOf<UserDataModel?>(null) }
+    val searchQuery by homeScreenViewModel.searchData.collectAsState()
 
     Scaffold(
         floatingActionButton = {
@@ -71,23 +76,41 @@ fun HomeUi(modifier: Modifier = Modifier) {
                 Icon(Icons.Default.Add, contentDescription = null)
             }
         }
-    ) { inneerPadding ->
+    ) { innerPadding ->
         LaunchedEffect(Unit) {
-            homeScreenViewModel.refreshData("All")
+            homeScreenViewModel.onQueryDataChange("", "All")
         }
         var selectedIndex by remember { mutableIntStateOf(0) }
         val options = listOf("All", "Male", "Female")
 
-
-
         Box(
             modifier = Modifier
-                .padding(inneerPadding)
+                .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Row(modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Absolute.Center) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        homeScreenViewModel.onQueryDataChange(
+                            it,
+                            genderLabel = options[selectedIndex]
+                        )
+                    },
+                    label = {
+                        Text(text = "Search")
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words
+                    ), modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Absolute.Center
+                ) {
                     SingleChoiceSegmentedButtonRow {
                         options.forEachIndexed { index, label ->
                             SegmentedButton(
@@ -97,7 +120,7 @@ fun HomeUi(modifier: Modifier = Modifier) {
                                 ),
                                 onClick = {
                                     selectedIndex = index
-                                    homeScreenViewModel.refreshData(label)
+                                    homeScreenViewModel.onQueryDataChange("", label)
                                 },
                                 selected = index == selectedIndex,
                                 label = { Text(label) }
@@ -105,57 +128,83 @@ fun HomeUi(modifier: Modifier = Modifier) {
                         }
                     }
                 }
-                LazyColumn {
-                    items(userData.size) { index: Int ->
-                        Column {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        showUpdateDialogState = true
-                                        selectedData = userData[index]
-                                    }
-                                    .padding(vertical = 8.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                elevation = CardDefaults.cardElevation(4.dp)
-                            ) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(userData.size) { index ->
+                        val user = userData[index]
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedData = user
+                                    showUpdateDialogState = true
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = CardDefaults.cardElevation(6.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(
-                                        text = userData[index].userName,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = userData[index].email,
-                                        modifier = Modifier.weight(1f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = userData[index].gender,
-                                        modifier = Modifier.weight(0.5f),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Name",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Text(
+                                            text = user.userName,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Email",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Text(
+                                            text = user.email,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(0.7f)) {
+                                        Text(
+                                            text = "Gender",
+                                            style = MaterialTheme.typography.labelSmall
+                                        )
+                                        Text(
+                                            text = user.gender,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+
                                     Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = null,
-                                        modifier = Modifier.clickable {
-                                            homeScreenViewModel.deleteUserData(userData[index].userId)
-                                        })
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete User",
+                                        modifier = Modifier
+                                            .padding(start = 12.dp)
+                                            .clickable {
+                                                homeScreenViewModel.deleteUserData(user.userId)
+                                            }
+                                    )
                                 }
                             }
-
                         }
-
                     }
                 }
+
             }
 
         }

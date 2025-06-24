@@ -34,11 +34,18 @@ interface RoomDao {
 
     // for get male Gender Specific data
     @Query("SELECT * FROM usertable WHERE gender In (:userGender)")
-   suspend fun getGenderData(userGender: String): List<UserDataModel>
+    suspend fun getGenderData(userGender: String): List<UserDataModel>
 
-   // for search use case
-   @Query("SELECT * FROM usertable WHERE userName Like ('%'|| :query || '%' OR email LIKE '%'|| :query || '%') AND gender = :gender")
-   suspend fun searchUser(query: String,gender: String) : List<UserDataModel>
-
-
+    // for search use case
+    @Query(
+        """
+    SELECT * FROM usertable
+    WHERE (
+        LOWER(userName) LIKE '%' || LOWER(:query) || '%'
+        OR LOWER(email) LIKE '%' || LOWER(:query) || '%'
+    )
+    AND (:gender = 'All' OR gender = :gender)
+"""
+    )
+    suspend fun searchUser(query: String, gender: String): List<UserDataModel>
 }

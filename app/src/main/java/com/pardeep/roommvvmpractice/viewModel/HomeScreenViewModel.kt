@@ -1,10 +1,13 @@
 package com.pardeep.roommvvmpractice.viewModel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pardeep.roommvvmpractice.data.model.UserDataModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 class HomeScreenViewModel(
@@ -21,33 +24,41 @@ class HomeScreenViewModel(
     private var _userGender = MutableStateFlow("Male")
     val userGender: StateFlow<String> = _userGender
 
-    private var _searchData = MutableStateFlow("")
-    val searchData: StateFlow<String> = _searchData
+    private var _searchquery = MutableStateFlow("")
+    val searchData: StateFlow<String> = _searchquery
 
 
     private var _getUserData = MutableStateFlow<List<UserDataModel>>(emptyList())
     val getUserData: StateFlow<List<UserDataModel>> = _getUserData
 
 
-    fun onQueryDataChange(query: String) {
-        _searchData.value = query
+    fun onQueryDataChange(query: String, genderLabel: String) {
+        _searchquery.value = query
+        _userGender.value = genderLabel
+    }
+
+    private fun observeQuery() {
+        viewModelScope.launch {
+            combine(_searchquery.debounce(300), _userGender) { query, gender ->
+                Pair(query, gender)
+            }.collect { (query, gender) ->
+                Log.d(
+                    "HomeViewModel",
+                    "observeQuery: gender value :${gender} and query value is${query}"
+                )
+                _getUserData.value = when {
+                    query.isBlank() && gender == "All" -> userRepositoryImp.getUserData()
+                    query.isBlank() -> userRepositoryImp.getFilterData(query, gender)
+                    else -> userRepositoryImp.getFilterData(query, gender)
+                }
+            }
+        }
     }
 
     init {
-        refreshData()
-
+        observeQuery()
     }
 
-    fun refreshData(type: String? = null) {
-        viewModelScope.launch {
-            when (type) {
-                "All" -> _getUserData.value = userRepositoryImp.getUserData()
-                "Male" -> _getUserData.value = userRepositoryImp.getMaleData(type)
-                "Female" -> _getUserData.value = userRepositoryImp.getFemaleData(type)
-            }
-
-        }
-    }
 
     fun updateUserName(newUserName: String) {
         _userName.value = newUserName
@@ -73,7 +84,7 @@ class HomeScreenViewModel(
                 email = email
             )
             userRepositoryImp.insertUserData(user)
-            refreshData("All")
+            onQueryDataChange("", "All")
             _userGender.value = "Male"
             _userName.value = ""
             _userEmail.value = ""
@@ -95,7 +106,7 @@ class HomeScreenViewModel(
         )
         viewModelScope.launch {
             userRepositoryImp.updateUserData(index, user)
-            refreshData("All")
+            onQueryDataChange("", "All")
         }
 
 
@@ -104,7 +115,7 @@ class HomeScreenViewModel(
     fun deleteUserData(index: Int) {
         viewModelScope.launch {
             userRepositoryImp.deleteUserData(index)
-            refreshData("All")
+            onQueryDataChange("", "All")
         }
 
     }
